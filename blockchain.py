@@ -49,7 +49,7 @@ class Blockchain(object):
         block = {
             'index': len(self.chain) + 1,
             'timestamp': time(),
-            'transactions': self.current_transactions,
+            'transactions': self.current_transactions + self.current_tickets_selling,
             'proof': proof,
             'previous_hash': previous_hash or self.hash(self.chain[-1]),
         }
@@ -92,8 +92,8 @@ class Blockchain(object):
             'sender': sender,
             'recipient': recipient,
             'ticket': ticket,
-            'signature_seller': self.sk_seller.sign(sender),
-            'signature_event': self.sk_event.sign(ticket),
+            'signature_seller': self.sk_seller.sign(''.join(bytearray(sender))),
+            'signature_event': self.sk_event.sign(''.join(bytearray(ticket))),
         })
 
         return self.last_block['index'] + 1
