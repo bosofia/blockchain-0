@@ -9,6 +9,8 @@ from flask import Flask, jsonify, request
 from urllib.parse import urlparse
 import requests
 
+from ecdsa import SigningKey
+
 
 class Blockchain(object):
     def __init__(self):
@@ -54,6 +56,27 @@ class Blockchain(object):
             'sender': sender,
             'recipient': recipient,
             'amount': amount,
+        })
+
+        return self.last_block['index'] + 1
+
+    def sell_official_ticket(self, sender, recipient, ticket, signature_seller, signature_event):
+        """
+        a ticket solsd by the official seller
+        :param sender: <str> Address of the Sender
+        :param recipient: <str> Address of the Recipient
+        :param ticket: <str> Type of the ticket
+        :param signature_seller: <str> Signature of the sender
+        :param signature_event: <str> Signature of the event
+        :return: <int> The index of the Block that will hold this transaction
+        """
+
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'ticket': ticket,
+            'amount': signature_seller,
+            'signature': signature_event,
         })
 
         return self.last_block['index'] + 1
@@ -178,7 +201,7 @@ class Blockchain(object):
 # Instantiate our Node
 app = Flask(__name__)
 
-# Generate a globally unique address for this node
+# Generate a globally unique address for this node : the official seller
 node_identifier = str(uuid4()).replace('-', '')
 
 # Instantiate the Blockchain
@@ -228,6 +251,24 @@ def new_transaction():
         values['sender'], values['recipient'], values['amount'])
 
     response = {'message': f'Transaction will be added to Block {index}'}
+    return jsonify(response), 201
+
+
+@app.route('/tickets/sell', methods=['POST'])
+def sell_official_ticket():
+    values = request.get_json()
+
+    # Check that the required fields are in the POST'ed data
+    required = ['sender', 'recipient', 'ticket',
+                'signature_seller', 'signature_event']
+    if not all(k in values for k in required):
+        return 'Missing values', 400
+
+    # Sell a new ticket
+    index = blockchain.sell_official_ticket(
+        values['sender'], values['recipient'], values['ticket'], values['signature_seller'], values['signature_event'])
+
+    response = {'message': f'Ticket selling will be added to Block {index}'}
     return jsonify(response), 201
 
 
