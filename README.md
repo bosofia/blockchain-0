@@ -11,7 +11,7 @@ Etudiants :
 
 Encadrant : Marc-Antoine Weisser
 
-Objectif du projet : Implémenter une blockchain permettant la certification et le suivi d'oeuvres d'art.
+Objectif du projet : Implémenter une blockchain permettant la création d'une billetterie incorruptible, pour les évènements sportifs par exemple.
 
 Travail réalisé :
 - Prise en main des bases à travers le tutoriel Hackernoon
