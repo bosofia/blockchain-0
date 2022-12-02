@@ -16,10 +16,19 @@ class Blockchain(object):
     def __init__(self):
         self.chain = []
         self.current_transactions = []
+        self.current_tickets_selling = []
 
         # Create the genesis block
         self.new_block(previous_hash=1, proof=100)
         self.nodes = set()
+
+        self.seller = 'd4ee26eee15148ee92c6cd394edd974e'
+        self.event = 'matchfrancebresil'
+
+        self.sk_seller = SigningKey.generate()
+        self.sk_event = SigningKey.generate()
+        self.vk_seller = self.sk_seller.verifying_key
+        self.vk_event = self.sk_event.verifying_key
 
     def new_block(self, proof, previous_hash=None):
         """
@@ -28,6 +37,14 @@ class Blockchain(object):
         :param previous_hash: (Optional) <str> Hash of previous Block
         :return: <dict> New Block
         """
+
+        # assert all tickets are valid
+        for ticket in self.current_tickets_selling:
+            if not self.vk_seller.verify(ticket['signature_seller'], ticket['sender']):
+                self.current_tickets_selling.remove(ticket)
+
+            if not self.vk_event.verify(ticket['signature_event'], ticket['ticket']):
+                self.current_tickets_selling.remove(ticket)
 
         block = {
             'index': len(self.chain) + 1,
@@ -60,7 +77,7 @@ class Blockchain(object):
 
         return self.last_block['index'] + 1
 
-    def sell_official_ticket(self, sender, recipient, ticket, signature_seller, signature_event):
+    def sell_official_ticket(self, sender, recipient, ticket):
         """
         a ticket solsd by the official seller
         :param sender: <str> Address of the Sender
@@ -71,12 +88,12 @@ class Blockchain(object):
         :return: <int> The index of the Block that will hold this transaction
         """
 
-        self.current_transactions.append({
+        self.current_tickets_selling.append({
             'sender': sender,
             'recipient': recipient,
             'ticket': ticket,
-            'amount': signature_seller,
-            'signature': signature_event,
+            'signature_seller': self.sk_seller.sign(sender),
+            'signature_event': self.sk_event.sign(ticket),
         })
 
         return self.last_block['index'] + 1
@@ -242,7 +259,8 @@ def new_transaction():
     values = request.get_json()
 
     # Check that the required fields are in the POST'ed data
-    required = ['sender', 'recipient', 'amount']
+    required = ['sender', 'recipient', 'ticket',
+                'signature_seller', 'signature_event']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
@@ -259,14 +277,13 @@ def sell_official_ticket():
     values = request.get_json()
 
     # Check that the required fields are in the POST'ed data
-    required = ['sender', 'recipient', 'ticket',
-                'signature_seller', 'signature_event']
+    required = ['sender', 'recipient', 'ticket']
     if not all(k in values for k in required):
         return 'Missing values', 400
 
     # Sell a new ticket
     index = blockchain.sell_official_ticket(
-        values['sender'], values['recipient'], values['ticket'], values['signature_seller'], values['signature_event'])
+        values['sender'], values['recipient'], values['ticket'])
 
     response = {'message': f'Ticket selling will be added to Block {index}'}
     return jsonify(response), 201
